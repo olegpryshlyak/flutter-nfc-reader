@@ -79,10 +79,6 @@ class NfcReader(result: MethodChannel.Result, call: MethodCall) : AbstractNfcHan
 
 class NfcScanner(private val plugin: FlutterNfcReaderPlugin) : NfcAdapter.ReaderCallback {
     override fun onTagDiscovered(tag: Tag) {
-        val sink = plugin.eventSink ?: return
-        tag.read { data ->
-            sink.success(data)
-        }
     }
 }
 
