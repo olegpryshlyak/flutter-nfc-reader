@@ -17,6 +17,8 @@ public class SwiftFlutterNfcReaderPlugin: NSObject, FlutterPlugin {
     fileprivate let kContent = "nfcContent"
     fileprivate let kStatus = "nfcStatus"
     fileprivate let kError = "nfcError"
+    fileprivate var invalidateAfterFirstRead = true
+    private var scannedTags: [[String: String]] = []
     
     
     public static func register(with registrar: FlutterPluginRegistrar) {
@@ -30,8 +32,9 @@ public class SwiftFlutterNfcReaderPlugin: NSObject, FlutterPlugin {
     public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
         switch(call.method) {
         case "NfcRead":
-            let map = call.arguments as? Dictionary<String, String>
-            instruction = map?["instruction"] ?? ""
+            let map = call.arguments as? Dictionary<String, Any>
+            instruction = map?["instruction"] as? String ?? ""
+            invalidateAfterFirstRead = map?["invalidateAfterFirstRead"] as? Bool ?? true
             readResult = result
             print("read")
             activateNFC(instruction)
@@ -57,7 +60,7 @@ extension SwiftFlutterNfcReaderPlugin {
     func activateNFC(_ instruction: String?) {
         print("activate")
         
-        nfcSession = NFCNDEFReaderSession(delegate: self, queue: DispatchQueue(label: "queueName", attributes: .concurrent), invalidateAfterFirstRead: true)
+        nfcSession = NFCNDEFReaderSession(delegate: self, queue: DispatchQueue(label: "queueName", attributes: .concurrent), invalidateAfterFirstRead: invalidateAfterFirstRead)
         
         // then setup a new session
         if let instruction = instruction {
@@ -143,8 +146,12 @@ extension SwiftFlutterNfcReaderPlugin : NFCNDEFReaderSessionDelegate {
         
         let data = [kId: "", kContent: text, kError: "", kStatus: "reading"]
         sendNfcEvent(data: data);
-        readResult?(data)
-        readResult=nil
+        if invalidateAfterFirstRead {
+            readResult?(data)
+            readResult=nil
+        } else {
+            scannedTags.append(data)
+        }
         //disableNFC()
     }
     
@@ -152,6 +159,11 @@ extension SwiftFlutterNfcReaderPlugin : NFCNDEFReaderSessionDelegate {
         print(error.localizedDescription)
         let data = [kId: "", kContent: "", kError: error.localizedDescription, kStatus: "error"]
         resulter?(data)
+        if !invalidateAfterFirstRead {
+            readResult?(scannedTags)
+            readResult = nil
+            scannedTags = []
+        }
         disableNFC()
     }
     

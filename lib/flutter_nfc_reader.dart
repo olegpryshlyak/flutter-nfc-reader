@@ -75,6 +75,12 @@ class FlutterNfcReader {
 
   static Future<void> stop() => _channel.invokeMethod('NfcStop');
 
+  static Future<List<NfcData>> readList({String? instruction}) async {
+    final List<Map> data = await _callListRead(instruction: instruction);
+    final List<NfcData> result = data.map((e) => NfcData.fromMap(e)).toList();
+    return result;
+  }
+
   static Future<NfcData> read({String? instruction}) async {
     final Map data = await _callRead(instruction: instruction);
     final NfcData result = NfcData.fromMap(data);
@@ -88,6 +94,16 @@ class FlutterNfcReader {
     return stream.receiveBroadcastStream().map((rawNfcData) {
       return NfcData.fromMap(rawNfcData);
     });
+  }
+
+  static Future<List<Map>> _callListRead({instruction: String}) async {
+    var result = await _channel.invokeMethod('NfcRead', <String, dynamic>{
+          "instruction": instruction,
+          "invalidateAfterFirstRead": false
+        }) ??
+        [];
+    result = result.cast<Map>();
+    return result;
   }
 
   static Future<Map> _callRead({instruction: String}) async {
